@@ -1,0 +1,26 @@
+{
+  "name": "pharma-dwh-etl",
+  "version": "0.1.0",
+  "private": true,
+  "description": "1C 8.2 / MSSQL -> PostgreSQL DWH ETL + discovery toolkit (PoC)",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "smoke": "tsx src/smoke-decode.ts",
+    "discover": "tsx src/cli.ts discover",
+    "decode-dbnames": "tsx src/cli.ts decode-dbnames"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "mssql": "^10.0.1",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/mssql": "^9.1.0",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.4"
+  }
+}

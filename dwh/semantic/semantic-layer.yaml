@@ -1,0 +1,60 @@
+# ============================================================================
+# Semantik qat — NL→SQL və hesabat motorunun "lüğəti". ŞABLON v0.
+# Gate 1-dən sonra real view/sütunlarla yekunlaşır.
+# Privacy variant B: Claude-a YALNIZ bu fayl + sual gedir (heç bir data yox).
+# ============================================================================
+
+version: 0
+locales: [az, ru]
+database: pharma_dwh
+allowed_schemas: [mart]          # SQL generasiyası yalnız mart.* üzərində
+
+metrics:
+  dovriyye:
+    sql: "SUM(dovriyye_edv_daxil)"
+    az: "Dövriyyə (ƏDV daxil, qaytarmalar çıxılmaqla)"
+    ru: "Выручка (с НДС, за вычетом возвратов)"
+    memo_ref: "docs/02-metrics-memo.md §1"
+  marja:
+    sql: "SUM(marja_ilkin)"
+    az: "Marja (orta maya; cost_status=0 olduqda İLKİN)"
+    ru: "Маржа (средняя себестоимость; провизорная при cost_status=0)"
+    caveat: "Bağlanmamış ay üçün həmişə 'ilkin' statusu göstərilməlidir"
+  miqdar:
+    sql: "SUM(miqdar_net)"
+    az: "Miqdar (net)"
+    ru: "Количество (нетто)"
+
+views:
+  mart.v_sales_daily:
+    grain: [satis_tarixi, teskilat, musteri, mehsul]
+    az: "Günlük satışlar — müştəri/məhsul/təşkilat kəsimində"
+    time_column: satis_tarixi
+  mart.v_stock_expiry:
+    grain: [tarix, anbar, mehsul, partiya]
+    az: "Gün sonu stok + yararlılıq müddəti zonaları"
+    time_column: tarix
+
+synonyms:                         # NL sualların lüğəti (AZ/RU danışıq → sxem)
+  müştəri: mart.v_sales_daily.musteri
+  aptek: mart.v_sales_daily.musteri
+  kontragent: mart.v_sales_daily.musteri
+  məhsul: mart.v_sales_daily.mehsul
+  dərman: mart.v_sales_daily.mehsul
+  товар: mart.v_sales_daily.mehsul
+  anbar: mart.v_stock_expiry.anbar
+  "yararlılıq müddəti": mart.v_stock_expiry.son_istifade
+  "срок годности": mart.v_stock_expiry.son_istifade
+
+comparison_defaults:
+  period_alignment: working_days   # MTD müqayisəsi eyni İŞ GÜNÜ sayı ilə (plan №11)
+  calendar: az                     # AZ bayramları dim_date.is_working_day-də
+
+guardrails:
+  # TƏK MƏNBƏ: Phase 5 SQL-validatoru bu dəyərləri BURADAN oxumalıdır —
+  # kodda dublikat sabit saxlamaq olmaz (sənəd-kod uyğunsuzluğu yaranır).
+  role: report_ro
+  statement_timeout_ms: 15000
+  force_limit: 5000
+  single_statement_select_only: true
+  deny_functions: ["pg_", "dblink", "lo_"]

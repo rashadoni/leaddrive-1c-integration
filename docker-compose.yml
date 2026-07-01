@@ -1,0 +1,45 @@
+# Test maşını üçün: PostgreSQL 16 (DWH) + Metabase (QA/ad-hoc BI).
+# Windows-da Docker yoxdursa: docs/03-windows-runbook.md
+services:
+  dwh:
+    image: postgres:16-alpine
+    container_name: pharma-dwh-pg
+    environment:
+      POSTGRES_DB: pharma_dwh
+      POSTGRES_USER: dwh
+      POSTGRES_PASSWORD: ${DWH_PASSWORD:-dwh_dev}
+    ports:
+      - "5433:5432"
+    volumes:
+      - dwh_data:/var/lib/postgresql/data
+      - ./dwh/ddl:/docker-entrypoint-initdb.d:ro   # 000→001→002 ilk başlamada işləyir
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dwh -d pharma_dwh"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: pharma-dwh-metabase
+    depends_on:
+      dwh:
+        condition: service_healthy
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: dwh
+      MB_DB_PORT: 5432
+      MB_DB_DBNAME: metabase_app
+      MB_DB_USER: dwh
+      MB_DB_PASS: ${DWH_PASSWORD:-dwh_dev}
+    ports:
+      - "3100:3000"
+    restart: unless-stopped
+
+  # app:  # Phase 4 — Next.js platforma (dashboard + push). Hələlik placeholder.
+  #   build: ./app
+  #   ports: ["3200:3000"]
+
+volumes:
+  dwh_data:
